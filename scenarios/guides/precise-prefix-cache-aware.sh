@@ -10,7 +10,7 @@
 
 # Model parameters
 #export LLMDBENCH_DEPLOY_MODEL_LIST="Qwen/Qwen3-0.6B"
-export LLMDBENCH_DEPLOY_MODEL_LIST="Qwen/Qwen3-32B"
+# export LLMDBENCH_DEPLOY_MODEL_LIST="Qwen/Qwen3-32B"
 #export LLMDBENCH_DEPLOY_MODEL_LIST="Qwen/Qwen3-30B-A3B"
 #export LLMDBENCH_DEPLOY_MODEL_LIST=openai/gpt-oss-120b
 #export LLMDBENCH_DEPLOY_MODEL_LIST="RedHatAI/Llama-3.3-70B-Instruct-FP8-dynamic"
@@ -19,16 +19,20 @@ export LLMDBENCH_DEPLOY_MODEL_LIST="Qwen/Qwen3-32B"
 #export LLMDBENCH_DEPLOY_MODEL_LIST=ibm-granite/granite-3.3-8b-instruct
 #export LLMDBENCH_DEPLOY_MODEL_LIST=ibm-granite/granite-3.3-2b-instruct
 #export LLMDBENCH_DEPLOY_MODEL_LIST=ibm-ai-platform/micro-g3.3-8b-instruct-1b
-#export LLMDBENCH_DEPLOY_MODEL_LIST="facebook/opt-125m"
-#export LLMDBENCH_DEPLOY_MODEL_LIST="meta-llama/Llama-3.1-8B-Instruct"
+export LLMDBENCH_DEPLOY_MODEL_LIST="Qwen/Qwen3-30B-A3B-Instruct-2507"
+# export LLMDBENCH_DEPLOY_MODEL_LIST="meta-llama/Llama-3.1-8B-Instruct"
 #export LLMDBENCH_DEPLOY_MODEL_LIST="meta-llama/Llama-3.1-70B-Instruct"
 #export LLMDBENCH_DEPLOY_MODEL_LIST="deepseek-ai/DeepSeek-R1-0528"
+
+export LLMDBENCH_VLLM_COMMON_NAMESPACE=llm-d-benchmark
+export LLMDBENCH_HARNESS_NAMESPACE=llm-d-benchmark
 
 # PVC parameters
 #             Storage class (leave uncommented to automatically detect the "default" storage class)
 #export LLMDBENCH_VLLM_COMMON_PVC_STORAGE_CLASS=standard-rwx
 #export LLMDBENCH_VLLM_COMMON_PVC_STORAGE_CLASS=shared-vast
 #export LLMDBENCH_VLLM_COMMON_PVC_STORAGE_CLASS=ocs-storagecluster-cephfs
+export LLMDBENCH_VLLM_COMMON_PVC_STORAGE_CLASS=local-storage
 export LLMDBENCH_VLLM_COMMON_PVC_MODEL_CACHE_SIZE=1Ti
 
 #export LLMDBENCH_VLLM_MODELSERVICE_GATEWAY_CLASS_NAME=istio
@@ -37,6 +41,7 @@ export LLMDBENCH_VLLM_COMMON_PVC_MODEL_CACHE_SIZE=1Ti
 #export LLMDBENCH_VLLM_MODELSERVICE_GAIE_PLUGINS_CONFIGFILE="default-plugins.yaml" (default is "plugins-v2.yaml")
 export LLMDBENCH_VLLM_MODELSERVICE_GAIE_SIDECAR_ENABLED=true
 export LLMDBENCH_VLLM_MODELSERVICE_GAIE_FLAGS=$(mktemp)
+export LLMDBENCH_VLLM_MODELSERVICE_GAIE_EPP_VERBOSITY=4
 cat << EOF > $LLMDBENCH_VLLM_MODELSERVICE_GAIE_FLAGS
 kv-cache-usage-percentage-metric: "vllm:kv_cache_usage_perc"
 v: 4  # log verbosity
@@ -112,6 +117,7 @@ EOF
 #export LLMDBENCH_VLLM_COMMON_AFFINITY=nvidia.com/gpu.product:NVIDIA-L40S                  # OpenShift
 #export LLMDBENCH_VLLM_COMMON_AFFINITY=nvidia.com/gpu.product:NVIDIA-A100-SXM4-80GB        # OpenShift
 #export LLMDBENCH_VLLM_COMMON_AFFINITY=nvidia.com/gpu                                      # ANY GPU (useful for Minikube)
+export LLMDBENCH_VLLM_COMMON_AFFINITY=kubernetes.io/os:linux
 
 #             Uncomment to use hostNetwork (only ONE PODE PER NODE)
 #export LLMDBENCH_VLLM_MODELSERVICE_EXTRA_POD_CONFIG=$(mktemp)
@@ -121,11 +127,11 @@ EOF
 #EOF
 
 # Common parameters across standalone and llm-d (prefill and decode) pods
-export LLMDBENCH_VLLM_COMMON_MAX_MODEL_LEN=16000
+export LLMDBENCH_VLLM_COMMON_MAX_MODEL_LEN=262144
 export LLMDBENCH_VLLM_COMMON_BLOCK_SIZE=64
 export LLMDBENCH_VLLM_COMMON_CPU_MEM=64Gi
 export LLMDBENCH_VLLM_COMMON_SHM_MEM=16Gi
-export LLMDBENCH_VLLM_COMMON_TENSOR_PARALLELISM=2
+export LLMDBENCH_VLLM_COMMON_TENSOR_PARALLELISM=1
 export LLMDBENCH_VLLM_COMMON_DATA_PARALLELISM=1
 
 # Uncomment ( ###### ) the following line to enable multi-nic
@@ -243,7 +249,10 @@ vllm serve /model-cache/models/REPLACE_ENV_LLMDBENCH_DEPLOY_CURRENT_MODEL \
 --prefix-caching-hash-algo sha256_cbor \
 --kv-transfer-config "{\"kv_connector\":\"NixlConnector\",\"kv_role\":\"kv_both\"}" \
 --kv-events-config "{\"enable_kv_cache_events\":true,\"publisher\":\"zmq\",\"endpoint\":\"tcp://REPLACE_ENV_LLMDBENCH_DEPLOY_CURRENT_SERVICE_NAME.REPLACE_ENV_LLMDBENCH_VLLM_COMMON_NAMESPACE.svc.cluster.local:5557\",\"topic\":\"kv@\${POD_IP}@QREPLACE_ENV_LLMDBENCH_DEPLOY_CURRENT_MODEL\"}" \
---enforce-eager
+--enable-prefix-caching \
+--enforce-eager \
+--enable-auto-tool-choice \
+--tool-call-parser qwen3_xml
 EOF
 
 # Workload parameters
@@ -252,3 +261,21 @@ export LLMDBENCH_HARNESS_EXPERIMENT_PROFILE=shared_prefix_synthetic.yaml
 
 # Local directory to copy benchmark runtime files and results
 export LLMDBENCH_CONTROL_WORK_DIR=~/data/precise_prefix_cache_aware
+
+export _LD_LIBRARY_PATH="\${LD_LIBRARY_PATH}:/usr/local/nvidia/lib64:/usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu"
+
+export LLMDBENCH_VLLM_COMMON_ENVVARS_TO_YAML=_LD_LIBRARY_PATH
+
+export LLMDBENCH_VLLM_MODELSERVICE_DECODE_ENVVARS_TO_YAML=${LLMDBENCH_VLLM_COMMON_ENVVARS_TO_YAML}
+export LLMDBENCH_VLLM_MODELSERVICE_PREFILL_ENVVARS_TO_YAML=${LLMDBENCH_VLLM_COMMON_ENVVARS_TO_YAML}
+export LLMDBENCH_VLLM_STANDALONE_ENVVARS_TO_YAML=${LLMDBENCH_VLLM_COMMON_ENVVARS_TO_YAML}
+
+export LLMDBENCH_LLMD_IMAGE_REGISTRY=docker.io
+export LLMDBENCH_LLMD_IMAGE_REPO=vllm
+export LLMDBENCH_LLMD_IMAGE_NAME=vllm-openai
+export LLMDBENCH_LLMD_IMAGE_TAG=latest
+
+export LLMDBENCH_LLMD_UDS_TOKENIZER_IMAGE_REGISTRY=quay.io
+export LLMDBENCH_LLMD_UDS_TOKENIZER_IMAGE_REPO=grpereir
+export LLMDBENCH_LLMD_UDS_TOKENIZER_IMAGE_NAME=llm-d-uds-tokenizer
+export LLMDBENCH_LLMD_UDS_TOKENIZER_IMAGE_TAG=toolcalling-fix

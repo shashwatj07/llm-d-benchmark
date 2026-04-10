@@ -462,21 +462,21 @@ def main():
       api, client = kube_connect(f'{ev["control_work_dir"]}/environment/context.ctx')
 
       # Pods are created on the service account named after model_id_label
-      if values_content.count("runAsGroup: 0") or values_content.count("runAsUser: 0") :
-        add_scc_to_service_account(
-            api,
-            "anyuid",
-            ev["deploy_current_model_id_label"],
-            ev["vllm_common_namespace"],
-            ev["control_dry_run"],
-        )
-        add_scc_to_service_account(
-            api,
-            "privileged",
-            ev["deploy_current_model_id_label"],
-            ev["vllm_common_namespace"],
-            ev["control_dry_run"],
-        )
+      # if values_content.count("runAsGroup: 0") or values_content.count("runAsUser: 0") :
+        # add_scc_to_service_account(
+        #     api,
+        #     "anyuid",
+        #     ev["deploy_current_model_id_label"],
+        #     ev["vllm_common_namespace"],
+        #     ev["control_dry_run"],
+        # )
+        # add_scc_to_service_account(
+        #     api,
+        #     "privileged",
+        #     ev["deploy_current_model_id_label"],
+        #     ev["vllm_common_namespace"],
+        #     ev["control_dry_run"],
+        # )
 
       # Deploy via helmfile
       announce(f'🚀 Installing helm chart "ms-{release}" via helmfile...')
